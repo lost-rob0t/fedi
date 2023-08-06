@@ -1,0 +1,74 @@
+#+title: Readme
+
+* Fedi Nim
+Activity Pub api in nim.
+
+
+
+** TODO write readme
+For now just check the api docs
+
+
+
+* TODO API endpoints [0/3]
++ [ ] Add more to be tracked here
+** TODO accounts [4/30]
++ [ ] https://docs.joinmastodon.org/methods/accounts/#create
++ [X] https://docs.joinmastodon.org/methods/accounts/#verify_credentials
++ [ ] https://docs.joinmastodon.org/methods/accounts/#update_credentials
++ [X] https://docs.joinmastodon.org/methods/accounts/#get
++ [X] https://docs.joinmastodon.org/methods/accounts/#statuses
++ [X] https://docs.joinmastodon.org/methods/accounts/#followers
++ [ ] https://docs.joinmastodon.org/methods/accounts/#following
++ [ ] https://docs.joinmastodon.org/methods/accounts/#featured_tags
++ [ ] https://docs.joinmastodon.org/methods/accounts/#lists
++ [ ] https://docs.joinmastodon.org/methods/accounts/#follow
++ [ ] https://docs.joinmastodon.org/methods/accounts/#unfollow
++ [ ] https://docs.joinmastodon.org/methods/accounts/#remove_from_followers
++ [ ] https://docs.joinmastodon.org/methods/accounts/#block
++ [ ] https://docs.joinmastodon.org/methods/accounts/#unblock
++ [ ] https://docs.joinmastodon.org/methods/accounts/#mute
++ [ ] https://docs.joinmastodon.org/methods/accounts/#unmute
++ [ ] https://docs.joinmastodon.org/methods/accounts/#pin
++ [ ] https://docs.joinmastodon.org/methods/accounts/#unpin
++ [ ] https://docs.joinmastodon.org/methods/accounts/#note
++ [ ] https://docs.joinmastodon.org/methods/accounts/#relationships
++ [ ] https://docs.joinmastodon.org/methods/accounts/#familiar_followers
++ [ ] https://docs.joinmastodon.org/methods/accounts/#search
++ [ ] https://docs.joinmastodon.org/methods/accounts/#lookup
++ [ ] https://docs.joinmastodon.org/methods/bookmarks/#get
++ [ ] https://docs.joinmastodon.org/methods/mutes/#get
++ [ ] https://docs.joinmastodon.org/methods/blocks/#get
++ [ ] https://docs.joinmastodon.org/methods/domain_blocks/#get
++ [ ] https://docs.joinmastodon.org/methods/domain_blocks/#block
++ [ ] https://docs.joinmastodon.org/methods/domain_blocks/#unblock
+
+** TODO statuses [2/23]
++ [ ] https://docs.joinmastodon.org/methods/statuses/#create
++ [X] https://docs.joinmastodon.org/methods/statuses/#get
++ [ ] https://docs.joinmastodon.org/methods/statuses/#delete
++ [X] https://docs.joinmastodon.org/methods/statuses/#context
++ [ ] https://docs.joinmastodon.org/methods/statuses/#reblogged_by
++ [ ] https://docs.joinmastodon.org/methods/statuses/#favourited_by
++ [ ] https://docs.joinmastodon.org/methods/statuses/#favourite
++ [ ] https://docs.joinmastodon.org/methods/statuses/#unfavourite
++ [ ] https://docs.joinmastodon.org/methods/statuses/#boost
++ [ ] https://docs.joinmastodon.org/methods/statuses/#unreblog
++ [ ] https://docs.joinmastodon.org/methods/statuses/#bookmark
++ [ ] https://docs.joinmastodon.org/methods/statuses/#unbookmark
++ [ ] https://docs.joinmastodon.org/methods/statuses/#mute
++ [ ] https://docs.joinmastodon.org/methods/statuses/#unmute
++ [ ] https://docs.joinmastodon.org/methods/statuses/#pin
++ [ ] https://docs.joinmastodon.org/methods/statuses/#unpin
++ [ ] https://docs.joinmastodon.org/methods/statuses/#edit
++ [ ] https://docs.joinmastodon.org/methods/statuses/#history
++ [ ] https://docs.joinmastodon.org/methods/statuses/#source
++ [ ] https://docs.joinmastodon.org/methods/media/#v2
++ [ ] https://docs.joinmastodon.org/methods/media/#get
++ [ ] https://docs.joinmastodon.org/methods/media/#update
+** TODO Timelines [1/5]
++ [X] https://docs.joinmastodon.org/methods/timelines/#public
++ [ ] https://docs.joinmastodon.org/methods/timelines/#tag
++ [ ] https://docs.joinmastodon.org/methods/timelines/#home
++ [ ] https://docs.joinmastodon.org/methods/timelines/#list
++ [ ]
