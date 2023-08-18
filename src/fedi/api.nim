@@ -18,6 +18,11 @@ type
     responseCode*: HttpCode
     info*: JsonNode
 
+# NOTE it should only be https, but i dont care. Use with your own risk.
+func webfingerUser*(username: string, scheme: string): string =
+  let data = username.split("@")
+  result = fmt"{scheme}://{data[1]}/.well-known/webfinger?resource={username}"
+
 
 func newFediError*(respCode: HttpCode, info: JsonNode): ref FediError =
   result = newException(FediError, "")
