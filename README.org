@@ -12,7 +12,7 @@ For now just check the api docs
 
 * TODO API endpoints [0/3]
 + [ ] Add more to be tracked here
-** TODO accounts [4/30]
+** TODO accounts [5/29]
 + [ ] https://docs.joinmastodon.org/methods/accounts/#create
 + [X] https://docs.joinmastodon.org/methods/accounts/#verify_credentials
 + [ ] https://docs.joinmastodon.org/methods/accounts/#update_credentials
@@ -35,14 +35,13 @@ For now just check the api docs
 + [ ] https://docs.joinmastodon.org/methods/accounts/#relationships
 + [ ] https://docs.joinmastodon.org/methods/accounts/#familiar_followers
 + [ ] https://docs.joinmastodon.org/methods/accounts/#search
-+ [ ] https://docs.joinmastodon.org/methods/accounts/#lookup
++ [X] https://docs.joinmastodon.org/methods/accounts/#lookup
 + [ ] https://docs.joinmastodon.org/methods/bookmarks/#get
 + [ ] https://docs.joinmastodon.org/methods/mutes/#get
 + [ ] https://docs.joinmastodon.org/methods/blocks/#get
 + [ ] https://docs.joinmastodon.org/methods/domain_blocks/#get
 + [ ] https://docs.joinmastodon.org/methods/domain_blocks/#block
 + [ ] https://docs.joinmastodon.org/methods/domain_blocks/#unblock
-
 ** TODO statuses [2/23]
 + [ ] https://docs.joinmastodon.org/methods/statuses/#create
 + [X] https://docs.joinmastodon.org/methods/statuses/#get

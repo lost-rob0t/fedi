@@ -209,3 +209,14 @@ proc getContext*(client: FediClient or AsyncFediClient, status: string): Future[
   castError req
   let data = (await req.body).parseJson
   return data
+
+
+
+proc lookupAccount*(client: FediClient or AsyncFediClient, acct: string): Future[JsonNode] {.multisync.} =
+  ## https://docs.joinmastodon.org/methods/accounts/#lookup
+  let url = client.makeUrl(fmt"/api/v1/accounts/lookup?acct={acct}")
+  let req = await client.hc.get(url)
+  await castRateLimit(res=req, client=client.hc)
+  castError req
+  let data = (await req.body).parseJson
+  return data
