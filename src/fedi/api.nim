@@ -88,7 +88,7 @@ proc newFediClient*(host: string, token = "", proxy = "", userAgent = "GoyimFrei
     client.headers = newHttpHeaders({ "Authorization": fmt"Bearer {token}" })
   FediClient(hc: client, baseUrl: host)
 
-proc newAsyncFediClient*(host: string, token = "", proxy = "", userAgent = "GoyimFrei"): AsyncFediClient =
+proc newAsyncFediClient*(host: string, token = "", proxy = "", userAgent = "fediClient"): AsyncFediClient =
   var client: AsyncHttpClient
   if proxy != "":
     echo proxy

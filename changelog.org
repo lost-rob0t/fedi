@@ -7,6 +7,10 @@ Added Get context api
 ** [2023-01-16 Mon 00:07] 0.2.0 Add getStatus()
 Gets a single status
 * Changelog
+** [2023-08-19 Sat 19:52] 0.5.1
+Added Lookup Api
+
+[[file:~/Documents/Projects/fedi/fedi.nimble::version = "0.5.1"]]
 ** [2023-01-27 Fri 17:37] 0.3.0 Added ratelimiting
 
 [[file:~/Documents/Projects/fedi/changelog.org::*\[2023-01-16 Mon 00:07\] 0.2.0 Add getStatus()][[2023-01-16 Mon 00:07] 0.2.0 Add getStatus()]]
