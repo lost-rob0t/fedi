@@ -3,6 +3,8 @@
 * Fedi Nim
 Activity Pub api in nim.
 
+** WARNING
+This repo is under lots of work, to improve the code quality and orgnize it up a bit.
 
 
 ** TODO write readme
