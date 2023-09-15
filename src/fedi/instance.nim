@@ -4,7 +4,7 @@ import asyncdispatch
 import strformat
 import json
 
-proc instance*(client, FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
+proc instance*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
   ## https://docs.joinmastodon.org/methods/instance/#v2
   let url = client.makeUrl("/api/v2/instance")
   let req = await client.hc.get(url)
@@ -32,7 +32,7 @@ proc getPeers*(client: FediClient or AsyncFediClient): Future[seq[string]] {.mul
 
   await castRateLimit(res=req, client=client.hc)
   castError req
-  let data = (await req.body).fromJson(seq[string])
+  let data = (await req.body).parseJson().to(seq[string])
   return data
 
 
