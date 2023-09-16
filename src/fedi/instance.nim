@@ -3,6 +3,9 @@ import httpclient
 import asyncdispatch
 import strformat
 import json
+import private
+import uri
+
 
 proc instance*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
   ## https://docs.joinmastodon.org/methods/instance/#v2
