@@ -66,12 +66,16 @@ proc getUserCount*(client: FediClient or AsyncFediClient): Future[int] {.multisy
 
 
 
-proc getTimeline*(client: FediClient or AsyncFediClient, instance: string, local, remote, onlyMedia: bool = false, limit = 40, maxId, minId, sincId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
+proc getTimeline*(client: FediClient or AsyncFediClient, instance: string, local, remote, onlyMedia: bool = false, limit = 40, maxId, minId, sinceId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
   let req = await client.hc.get(fmt"{instance}/api/v1/timelines/public?" & encodeQuery createNadd(
     newseq[DoubleStrTuple](),[
     local,
     remote,
-      limit],
+    limit,
+    onlyMedia,
+    maxId,
+    minId,
+    sinceId],
     defaults
   ))
   await castRateLimit(res=req, client=client.hc)
@@ -79,12 +83,16 @@ proc getTimeline*(client: FediClient or AsyncFediClient, instance: string, local
   return (await req.body).parseJson
 
 
-proc getTimeline*(client: FediClient or AsyncFediClient, local, remote, onlyMedia: bool = false, limit = 20, maxId, minId, sincId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
+proc getTimeline*(client: FediClient or AsyncFediClient, local, remote, onlyMedia: bool = false, limit = 20, maxId, minId, sinceId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
   let req = await client.hc.get(client.makeUrl("/api/v1/timelines/public?" & encodeQuery createNadd(
     newseq[DoubleStrTuple](),[
     local,
     remote,
-      limit],
+    limit,
+    onlyMedia,
+    maxId,
+    minId,
+    sinceId],
     defaults
   )))
   await castRateLimit(res=req, client=client.hc)

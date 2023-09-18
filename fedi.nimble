@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.5.2"
+version       = "0.6.0"
 author        = "nsaspy"
 description   = "Fediverse client in nim"
 license       = "MIT"
