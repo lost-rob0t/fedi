@@ -1,71 +1,67 @@
-import client
-import httpclient
-import asyncdispatch
-import json
-import strformat
-import private
-import uri
+import std/[asyncdispatch, json, strformat]
+
+import client, utils
 
 
-proc verifyAccountCreds*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
-  let url = client.makeUrl("/api/v1/accounts/verify_credentials")
-  let req = await client.hc.get(url)
-  defer: client.hc.close()
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (await req.body).parseJson
+proc verifyAccountCreds*(client: FediClient or AsyncFediClient): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson("api/v1/accounts/verify_credentials")
 
 
-
-proc getAccountInfo*(client: FediClient or AsyncFediClient, accountId: string): Future[JsonNode] {.multisync.} =
-  let url = client.makeUrl(fmt"/api/v1/accounts/{accountId}")
-  let req = await client.hc.get(url)
-  defer: client.hc.close()
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-
-  return (await req.body).parseJson
+proc getAccountInfo*(client: FediClient or AsyncFediClient,
+                     accountId: string): Future[JsonNode] {.multisync.} =
+  return await client.requestJson(fmt"api/v1/accounts/{accountId}")
 
 
-proc getStatuses*(client: FediClient or AsyncFediClient, accountId: string, limit: int = 20, onlyMedia, excludeReplies, excludeReblogs: bool = false, tagged: string = "", maxId, minId, sinceId: int = 0): Future[JsonNode] {.multisync, captureDefaults.} =
-  let url = client.makeUrl(fmt"/api/v1/accounts/{accountId}/statuses?" & encodeQuery createNadd(
-    newseq[DoubleStrTuple](),
-    [
-      limit,
-      onlyMedia,
-      excludeReplies,
-      excludeReblogs,
-      tagged,
-      minId,
-      maxId,
-      sinceId
-    ], defaults
+proc accountStatusesPath*(accountId: string, limit = 20,
+                          onlyMedia = false, excludeReplies = false,
+                          excludeReblogs = false, tagged = "",
+                          maxId = "", minId = "", sinceId = ""): string =
+  var params: seq[QueryParam]
+  params.addQueryParam("limit", max(1, min(40, limit)))
+  params.addQueryParam("only_media", onlyMedia)
+  params.addQueryParam("exclude_replies", excludeReplies)
+  params.addQueryParam("exclude_reblogs", excludeReblogs)
+  params.addQueryParam("tagged", tagged)
+  params.addQueryParam("max_id", maxId)
+  params.addQueryParam("min_id", minId)
+  params.addQueryParam("since_id", sinceId)
+  result = fmt"api/v1/accounts/{accountId}/statuses" & buildQuery(params)
+
+
+proc getStatuses*(client: FediClient or AsyncFediClient,
+                  accountId: string, limit = 20,
+                  onlyMedia = false, excludeReplies = false,
+                  excludeReblogs = false, tagged = "",
+                  maxId = "", minId = "", sinceId = ""): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson(accountStatusesPath(
+    accountId = accountId,
+    limit = limit,
+    onlyMedia = onlyMedia,
+    excludeReplies = excludeReplies,
+    excludeReblogs = excludeReblogs,
+    tagged = tagged,
+    maxId = maxId,
+    minId = minId,
+    sinceId = sinceId
   ))
-  let req = await client.hc.get(url)
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (await req.body).parseJson
 
 
-proc getFollowers*(client: FediClient or AsyncFediClient,  accountId: string): Future[(HttpHeaders, JsonNode)] {.multisync.} =
-  ## Returnes a named tuple
-  ## if there is pagination check the next field
-  ## json data is in the data field
-  let url = client.makeUrl(fmt"/api/v1/accounts/{accountId}/followers")
-  let req = await client.hc.get(url)
-  defer: client.hc.close()
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (next: req.headers, data: (await req.body).parseJson)
+proc getFollowers*(client: FediClient or AsyncFediClient,
+                   accountId: string, limit = 40,
+                   maxId = "", sinceId = ""): Future[JsonResponse]
+    {.multisync.} =
+  var params: seq[QueryParam]
+  params.addQueryParam("limit", max(1, min(80, limit)))
+  params.addQueryParam("max_id", maxId)
+  params.addQueryParam("since_id", sinceId)
+  let endpoint = fmt"api/v1/accounts/{accountId}/followers" & buildQuery(params)
+  return await client.requestJsonWithHeaders(client.makeUrl(endpoint))
 
 
-proc lookupAccount*(client: FediClient or AsyncFediClient, acct: string): Future[JsonNode] {.multisync.} =
-  ## https://docs.joinmastodon.org/methods/accounts/#lookup
-  let url = client.makeUrl(fmt"/api/v1/accounts/lookup?acct={acct}")
-  let req = await client.hc.get(url)
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  return data
-
-
+proc lookupAccount*(client: FediClient or AsyncFediClient,
+                    acct: string): Future[JsonNode] {.multisync.} =
+  var params: seq[QueryParam]
+  params.addQueryParam("acct", acct)
+  return await client.requestJson("api/v1/accounts/lookup" & buildQuery(params))
