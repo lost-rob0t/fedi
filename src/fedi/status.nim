@@ -1,24 +1,21 @@
-import client
-import httpclient
-import asyncdispatch
-import json
-import strformat
+import std/[asyncdispatch, json, strformat]
 
-proc getStatus*(client: FediClient or AsyncFediClient, status: string): Future[JsonNode] {.multisync.} =
-  let url = client.makeUrl(fmt"/api/v1/statuses/{$status}")
-  let req = await client.hc.get(url)
-
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  return data
+import client, utils
 
 
-proc getContext*(client: FediClient or AsyncFediClient, status: string): Future[JsonNode] {.multisync.} =
-  let url = client.makeUrl(fmt"/api/v1/statuses/{status}/context")
-  let req = await client.hc.get(url)
+proc getStatus*(client: FediClient or AsyncFediClient,
+                statusId: string): Future[JsonNode] {.multisync.} =
+  return await client.requestJson(fmt"api/v1/statuses/{statusId}")
 
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  return data
+
+proc getStatuses*(client: FediClient or AsyncFediClient,
+                  statusIds: openArray[string]): Future[JsonNode] {.multisync.} =
+  var params: seq[QueryParam]
+  for statusId in statusIds:
+    params.addQueryParam("id[]", statusId)
+  return await client.requestJson("api/v1/statuses" & buildQuery(params))
+
+
+proc getContext*(client: FediClient or AsyncFediClient,
+                 statusId: string): Future[JsonNode] {.multisync.} =
+  return await client.requestJson(fmt"api/v1/statuses/{statusId}/context")
