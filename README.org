@@ -14,7 +14,7 @@ nimble install "https://github.com/lost-rob0t/fedi#head"
 * Example
 
 #+begin_src nim
-import std/asyncdispatch
+import std/[asyncdispatch, os]
 import fedi
 
 proc main() {.async.} =
