@@ -1,100 +1,93 @@
-import client
-import httpclient
-import asyncdispatch
-import strformat
-import json
-import private
-import uri
+import std/[asyncdispatch, json]
+
+import client, utils
 
 
-proc instance*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
-  ## https://docs.joinmastodon.org/methods/instance/#v2
-  let url = client.makeUrl("/api/v2/instance")
-  let req = await client.hc.get(url)
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  return data
+proc instance*(client: FediClient or AsyncFediClient): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson("api/v2/instance")
 
 
-proc getStats*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync, deprecated.} =
-  let url = client.makeUrl("/api/v1/instance")
-  let req = await client.hc.get(url)
-
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (await req.body).parseJson
+proc getStats*(client: FediClient or AsyncFediClient): Future[JsonNode]
+    {.multisync, deprecated: "Use instance() for the Mastodon v2 endpoint".} =
+  return await client.requestJson("api/v1/instance")
 
 
+proc getPeers*(client: FediClient or AsyncFediClient): Future[seq[string]]
+    {.multisync.} =
+  let data = await client.requestJson("api/v1/instance/peers")
+  for item in data.items:
+    result.add(item.getStr)
 
 
-proc getPeers*(client: FediClient or AsyncFediClient): Future[seq[string]] {.multisync.} =
-  ## https://docs.joinmastodon.org/methods/instance/#peers
-  let url = client.makeUrl("/api/v1/instance/peers")
-  let req = await client.hc.get(url)
-
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson().to(seq[string])
-  return data
+proc weeklyActivity*(client: FediClient or AsyncFediClient): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson("api/v1/instance/activity")
 
 
-proc weeklyActivity*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
-  ## https://docs.joinmastodon.org/methods/instance/#activity
-  let url = client.makeUrl("/api/v1/instance/activity")
-  let req = await client.hc.get(url)
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  return data
+proc getRules*(client: FediClient or AsyncFediClient): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson("api/v1/instance/rules")
 
 
-proc getRules*(client: FediClient or AsyncFediClient): Future[JsonNode] {.multisync.} =
-  ## https://docs.joinmastodon.org/methods/instance/#rules
+proc getActiveUserCount*(client: FediClient or AsyncFediClient): Future[int]
+    {.multisync.} =
+  let data = await client.instance()
+  result = data{"usage"}{"users"}{"active_month"}.getInt(0)
 
 
-
-proc getUserCount*(client: FediClient or AsyncFediClient): Future[int] {.multisync.} =
-  let url = client.makeUrl("/api/v1/instance")
-  let req = await client.hc.get(url)
-
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  let data = (await req.body).parseJson
-  result = data["stats"]["user_count"].getInt
+proc getUserCount*(client: FediClient or AsyncFediClient): Future[int]
+    {.multisync, deprecated: "Mastodon v1 instance statistics are deprecated; use getActiveUserCount()".} =
+  let data = await client.getStats()
+  result = data{"stats"}{"user_count"}.getInt(0)
 
 
+proc publicTimelinePath*(local = false, remote = false,
+                         onlyMedia = false, limit = 20,
+                         maxId = "", minId = "", sinceId = ""): string =
+  if local and remote:
+    raise newException(ValueError, "local and remote cannot both be true")
+
+  var params: seq[QueryParam]
+  params.addQueryParam("local", local)
+  params.addQueryParam("remote", remote)
+  params.addQueryParam("only_media", onlyMedia)
+  params.addQueryParam("limit", max(1, min(40, limit)))
+  params.addQueryParam("max_id", maxId)
+  params.addQueryParam("min_id", minId)
+  params.addQueryParam("since_id", sinceId)
+  result = "api/v1/timelines/public" & buildQuery(params)
 
 
-proc getTimeline*(client: FediClient or AsyncFediClient, instance: string, local, remote, onlyMedia: bool = false, limit = 40, maxId, minId, sinceId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
-  let req = await client.hc.get(fmt"{instance}/api/v1/timelines/public?" & encodeQuery createNadd(
-    newseq[DoubleStrTuple](),[
-    local,
-    remote,
-    limit,
-    onlyMedia,
-    maxId,
-    minId,
-    sinceId],
-    defaults
+proc getTimeline*(client: FediClient or AsyncFediClient,
+                  local = false, remote = false,
+                  onlyMedia = false, limit = 20,
+                  maxId = "", minId = "", sinceId = ""): Future[JsonNode]
+    {.multisync.} =
+  return await client.requestJson(publicTimelinePath(
+    local = local,
+    remote = remote,
+    onlyMedia = onlyMedia,
+    limit = limit,
+    maxId = maxId,
+    minId = minId,
+    sinceId = sinceId
   ))
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (await req.body).parseJson
 
 
-proc getTimeline*(client: FediClient or AsyncFediClient, local, remote, onlyMedia: bool = false, limit = 20, maxId, minId, sinceId: string = ""): Future[JsonNode] {.captureDefaults, multisync.} =
-  let req = await client.hc.get(client.makeUrl("/api/v1/timelines/public?" & encodeQuery createNadd(
-    newseq[DoubleStrTuple](),[
-    local,
-    remote,
-    limit,
-    onlyMedia,
-    maxId,
-    minId,
-    sinceId],
-    defaults
-  )))
-  await castRateLimit(res=req, client=client.hc)
-  castError req
-  return (await req.body).parseJson
+proc getTimeline*(client: FediClient or AsyncFediClient,
+                  instanceHost: string,
+                  local = false, remote = false,
+                  onlyMedia = false, limit = 20,
+                  maxId = "", minId = "", sinceId = ""): Future[JsonNode]
+    {.multisync.} =
+  let url = normalizeHost(instanceHost) & "/" & publicTimelinePath(
+    local = local,
+    remote = remote,
+    onlyMedia = onlyMedia,
+    limit = limit,
+    maxId = maxId,
+    minId = minId,
+    sinceId = sinceId
+  )
+  return await client.requestJsonUrl(url)
