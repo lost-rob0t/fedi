@@ -1,97 +1,193 @@
-import httpclient
-import asyncdispatch
-import json
-import times
-from strutils import parseInt
-from os import sleep
-import strformat
+import std/[asyncdispatch, httpclient, httpcore, json, os, strformat, strutils, times]
+
+const
+  DefaultUserAgent* = "fedi/1.0.0 (+https://github.com/lost-rob0t/fedi)"
+
+
 type
   BaseFediClient = object of RootObj
     baseUrl*: string
+
   AsyncFediClient* = object of BaseFediClient
     hc*: AsyncHttpClient
+
   FediClient* = object of BaseFediClient
     hc*: HttpClient
 
-  FediError* = object of Defect
+  JsonResponse* = tuple[headers: HttpHeaders, data: JsonNode]
+
+  FediError* = object of CatchableError
     responseCode*: HttpCode
     info*: JsonNode
+    retryAfterMs*: int
 
-func newFediError*(respCode: HttpCode, info: JsonNode): ref FediError =
-  result = newException(FediError, "")
-  result.responseCode = respCode
+
+func newFediError*(responseCode: HttpCode, info: JsonNode,
+                   retryAfterMs = 0): ref FediError =
+  result = newException(FediError, "Mastodon API request failed with HTTP " & $responseCode)
+  result.responseCode = responseCode
   result.info = info
-
-template castError*(res: Response) =
-  if not res.code.is2xx:
-    raise newFediError(res.code, res.body.parseJson)
-
-template castError*(res: AsyncResponse) =
-  if not res.code.is2xx:
-    raise newFediError(res.code, (await res.body).parseJson)
-
-proc parseSleep*(header: HttpHeaders): int =
-  ## Return the amount of seconds until ratelimit resets
-  let resetTimeStr = header.getOrDefault("x-ratelimit-reset").toString
-  let serverTimeStr = header.getOrDefault("date").toString
-  let serverTime = parseTime(serverTimeStr, "ddd, dd MMM yyyy hh:mm:ss 'GMT'", utc()).toUnix
-  let sleepTime = parseTime(resetTimeStr, "yyyy-MM-dd'T'HH:mm:ss'.'ffffff'Z'", utc()).toUnix
-  result = int(sleepTime - serverTime)
-
-proc checkRateLimit*(header: HttpHeaders): bool =
-  ## Check if the ratelimit amount is 10 or lower, returns true if 10 or lower, and you should now sleep until reset time
-  let left = header.getOrDefault("x-ratelimit-remaining").toString.parseInt
-  when defined(debug):
-    echo $left
-  if left <= 10 or left == 0:
-    when defined(debug):
-      echo "Ratelimit left: ", $left
-    result = true
-  else:
-    result = false
-
-proc castRateLimit*(res: AsyncResponse, client: AsyncHttpClient) {.async.} =
-  let sleepBool = res.headers.checkRateLimit()
-  if sleepBool:
-    client.close()
-    let sleep = res.headers.parseSleep()
-    when defined(debug):
-      echo "Sleeping until ratelimit resets in: ", $sleep, ", secs"
-    await sleepAsync(sleep * 1000)
-
-proc castRateLimit*(res: Response, client: HttpClient) =
-  let sleepBool = res.headers.checkRateLimit()
-  if sleepBool:
-    let sleep = res.headers.parseSleep()
-    when defined(debug):
-      echo "Sleeping until ratelimit resets in: ", $sleep, ", secs"
-    sleep(sleep * 1000)
+  result.retryAfterMs = retryAfterMs
 
 
+proc normalizeHost*(host: string): string =
+  result = host.strip()
+  if result.len == 0:
+    raise newException(ValueError, "Mastodon host cannot be empty")
 
-proc newFediClient*(host: string, token = "", proxy = "", userAgent = "GoyimFrei"): FediClient =
-  var client: HttpClient
-  if proxy != "":
-    client = newHttpClient(proxy=newProxy(proxy), userAgent=userAgent)
-  else:
-    client = newHttpClient(userAgent=userAgent)
+  if not result.startsWith("https://") and not result.startsWith("http://"):
+    result = "https://" & result
 
-  client.headers = newHttpHeaders({ "Content-Type": "application/json" })
+  while result.len > 0 and result[^1] == '/':
+    result.setLen(result.len - 1)
+
+
+proc makeUrl*(client: AsyncFediClient or FediClient, endpoint: string): string =
+  var path = endpoint.strip()
+  while path.len > 0 and path[0] == '/':
+    path.delete(0, 0)
+  result = client.baseUrl & "/" & path
+
+
+proc requestHeaders(token: string): HttpHeaders =
+  result = newHttpHeaders()
+  result["Accept"] = "application/json"
+  result["Content-Type"] = "application/json"
   if token.len > 0:
-    client.headers = newHttpHeaders({ "Authorization": fmt"Bearer {token}" })
-  FediClient(hc: client, baseUrl: host)
+    result["Authorization"] = "Bearer " & token
 
-proc newAsyncFediClient*(host: string, token = "", proxy = "", userAgent = "fediClient"): AsyncFediClient =
-  var client: AsyncHttpClient
-  if proxy != "":
-    echo proxy
-    client = newAsyncHttpClient(proxy=newProxy(proxy), userAgent=userAgent)
+
+proc newFediClient*(host: string, token = "", proxy = "",
+                    userAgent = DefaultUserAgent): FediClient =
+  var http: HttpClient
+  if proxy.len > 0:
+    http = newHttpClient(proxy = newProxy(proxy), userAgent = userAgent)
   else:
-    client = newAsyncHttpClient(userAgent=userAgent)
+    http = newHttpClient(userAgent = userAgent)
+  http.headers = requestHeaders(token)
+  result = FediClient(hc: http, baseUrl: normalizeHost(host))
 
-  client.headers = newHttpHeaders({ "Content-Type": "application/json" })
-  if token.len > 0:
-    client.headers = newHttpHeaders({ "Authorization": fmt"Bearer {token}" })
-  AsyncFediClient(hc: client, baseUrl: host)
-proc makeUrl*(self: AsyncFediClient or FediClient, endpoint: string): string =
-  result = fmt"{self.baseUrl}/{endpoint}"
+
+proc newAsyncFediClient*(host: string, token = "", proxy = "",
+                         userAgent = DefaultUserAgent): AsyncFediClient =
+  var http: AsyncHttpClient
+  if proxy.len > 0:
+    http = newAsyncHttpClient(proxy = newProxy(proxy), userAgent = userAgent)
+  else:
+    http = newAsyncHttpClient(userAgent = userAgent)
+  http.headers = requestHeaders(token)
+  result = AsyncFediClient(hc: http, baseUrl: normalizeHost(host))
+
+
+proc close*(client: FediClient) =
+  client.hc.close()
+
+
+proc close*(client: AsyncFediClient) =
+  client.hc.close()
+
+
+proc headerValue(headers: HttpHeaders, name: string): string =
+  headers.getOrDefault(name).toString.strip()
+
+
+proc parseJsonBody(body: string): JsonNode =
+  if body.len == 0:
+    return newJNull()
+  try:
+    result = parseJson(body)
+  except CatchableError:
+    result = %*{"error": body}
+
+
+proc parseResetTime(value: string): int64 =
+  const formats = [
+    "yyyy-MM-dd'T'HH:mm:ss'.'ffffff'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss'.'fff'Z'",
+    "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    "yyyy-MM-dd'T'HH:mm:sszzz",
+    "yyyy-MM-dd'T'HH:mm:ss'.'fff'zzz"
+  ]
+
+  for format in formats:
+    try:
+      return parseTime(value, format, utc()).toUnix
+    except CatchableError:
+      discard
+
+
+proc rateLimitDelayMs*(headers: HttpHeaders): int =
+  let remainingText = headerValue(headers, "x-ratelimit-remaining")
+  if remainingText.len == 0:
+    return 0
+
+  try:
+    if parseInt(remainingText) > 0:
+      return 0
+  except ValueError:
+    return 0
+
+  let retryAfter = headerValue(headers, "retry-after")
+  if retryAfter.len > 0:
+    try:
+      return max(0, parseInt(retryAfter)) * 1000
+    except ValueError:
+      discard
+
+  let resetText = headerValue(headers, "x-ratelimit-reset")
+  if resetText.len > 0:
+    let resetAt = parseResetTime(resetText)
+    if resetAt > 0:
+      let seconds = resetAt - getTime().toUnix
+      if seconds > 0:
+        return int(seconds * 1000)
+
+  result = 1000
+
+
+proc requestJsonWithHeaders*(client: AsyncFediClient,
+                             url: string): Future[JsonResponse] {.async.} =
+  let response = await client.hc.get(url)
+  let body = await response.body
+  let data = parseJsonBody(body)
+  let delayMs = rateLimitDelayMs(response.headers)
+
+  if not response.code.is2xx:
+    raise newFediError(response.code, data, delayMs)
+
+  if delayMs > 0:
+    await sleepAsync(delayMs)
+
+  result = (headers: response.headers, data: data)
+
+
+proc requestJsonWithHeaders*(client: FediClient, url: string): JsonResponse =
+  let response = client.hc.get(url)
+  let data = parseJsonBody(response.body)
+  let delayMs = rateLimitDelayMs(response.headers)
+
+  if not response.code.is2xx:
+    raise newFediError(response.code, data, delayMs)
+
+  if delayMs > 0:
+    sleep(delayMs)
+
+  result = (headers: response.headers, data: data)
+
+
+proc requestJson*(client: AsyncFediClient,
+                  endpoint: string): Future[JsonNode] {.async.} =
+  result = (await client.requestJsonWithHeaders(client.makeUrl(endpoint))).data
+
+
+proc requestJson*(client: FediClient, endpoint: string): JsonNode =
+  result = client.requestJsonWithHeaders(client.makeUrl(endpoint)).data
+
+
+proc requestJsonUrl*(client: AsyncFediClient,
+                     url: string): Future[JsonNode] {.async.} =
+  result = (await client.requestJsonWithHeaders(url)).data
+
+
+proc requestJsonUrl*(client: FediClient, url: string): JsonNode =
+  result = client.requestJsonWithHeaders(url).data

@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [master, "agent/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: "2.2.10"
+      - run: nimble test -y
